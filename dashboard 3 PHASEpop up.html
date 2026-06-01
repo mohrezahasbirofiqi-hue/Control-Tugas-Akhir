@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Factor Controller - Elektro Industri PENS</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PFC PENS">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <link rel="manifest" href='data:application/json,{"name":"Smart Capacitor Bank","short_name":"PFC PENS","start_url":".","display":"standalone","background_color":"#080b11","theme_color":"#0f1c3f"}'>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Share+Tech+Mono&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        :root {
+            --hima-navy: #0f1c3f;
+            --hima-blue-light: #1b3060;
+            --hima-yellow: #f1c40f;
+            --hima-red: #e74c3c;
+            --neon-green: #2ecc71;
+            --dark-bg: #080b11;
+            --phase-r: #ff4d4d;
+            --phase-s: #f1c40f;
+            --phase-t: #3498db;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #f1f5f9;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+        }
+
+        .header-pens {
+            background: linear-gradient(135deg, var(--hima-navy), #0a1128);
+            border-bottom: 4px solid var(--hima-yellow);
+            border-top: 4px solid var(--hima-red);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            padding: 20px;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .sub-title {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--hima-yellow);
+        }
+
+        .section-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: #ffffff;
+            border-left: 5px solid var(--hima-yellow);
+            padding-left: 10px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* Monitoring Grid 3-Phase */
+        .phase-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        @media (max-width: 992px) {
+            .phase-grid { grid-template-columns: 1fr; }
+        }
+
+        .card-parameter {
+            background: linear-gradient(145deg, #111622, #0d111a);
+            border: 2px solid var(--hima-blue-light);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.4);
+        }
+
+        /* Card Khusus Rata-Rata */
+        .card-average {
+            background: linear-gradient(145deg, #1a2235, #111827);
+            border: 2px solid var(--hima-yellow);
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+            box-shadow: 0 8px 15px rgba(241, 196, 15, 0.15);
+        }
+        
+        .card-average .param-title {
+            color: #ffffff;
+            font-size: 1.1rem;
+        }
+
+        /* Border khusus penanda Phase */
+        .border-r { border-top: 4px solid var(--phase-r); }
+        .border-s { border-top: 4px solid var(--phase-s); }
+        .border-t { border-top: 4px solid var(--phase-t); }
+
+        .param-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .digital-num {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2.3rem;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+        
+        .digital-num-avg {
+            font-size: 2.8rem;
+            text-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+
+        .num-v { color: #5dade2; }
+        .num-i { color: #f39c12; }
+        .num-pf { color: #58d68d; }
+
+        /* Relay Grid Minimalis (Hanya Angka) */
+        .relay-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 12px;
+        }
+        @media (max-width: 768px) {
+            .relay-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .relay-card {
+            background: #111622;
+            border: 2px solid #202b42;
+            border-radius: 10px;
+            padding: 12px 5px;
+            text-align: center;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .relay-card .relay-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: #475569;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .relay-card .status-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+
+        /* Efek Aktif Relay */
+        .relay-card.active-on {
+            border-color: var(--neon-green);
+            background: linear-gradient(145deg, #11261a, #0b1710);
+            box-shadow: 0 0 12px rgba(46, 204, 113, 0.4);
+        }
+        .relay-card.active-on .relay-num {
+            color: var(--neon-green);
+            text-shadow: 0 0 5px rgba(46, 204, 113, 0.6);
+        }
+        .relay-card.active-on .status-text {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .log-panel {
+            background: #0f141f;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-family: 'Share Tech Mono', monospace;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    
+    <div class="header-pens text-center mb-2">
+        <div class="row align-items-center">
+            <div class="col-lg-3 text-lg-start text-center mb-3 mb-lg-0">
+                <span class="fs-5 text-white-50 d-block">HIMA ELEKTRO</span>
+                <span class="fs-4 fw-bold text-uppercase" style="color: var(--hima-yellow); letter-spacing:1px;">INDUSTRI PENS</span>
+            </div>
+            <div class="col-lg-6">
+                <h1 class="header-title m-0">SMART CAPACITOR BANK</h1>
+                <p class="sub-title m-0 mt-1">SISTEM KENDALI UTAMA POWER FACTOR CONTROLLER 3-PHASE</p>
+            </div>
+            <div class="col-lg-3 text-lg-end text-center mt-3 mt-lg-0">
+                <span class="badge bg-dark text-success border border-success p-2 fs-6">● SYSTEM ONLINE</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-label">Monitoring Individual Phase (R-S-T)</div>
+    <div class="phase-grid">
+        <div class="card-parameter border-r">
+            <div class="text-start mb-2"><span class="badge bg-danger">PHASE R</span></div>
+            <div class="row g-2">
+                <div class="col-4">
+                    <div class="param-title">TEGANGAN (V)</div>
+                    <div class="digital-num num-v" id="txt-v-r">0.0</div>
+                </div>
+                <div class="col-4">
+                    <div class="param-title">ARUS (A)</div>
+                    <div class="digital-num num-i" id="txt-i-r">0.00</div>
+                </div>
+                <div class="col-4">
+                    <div class="param-title">COS &phi;</div>
+                    <div class="digital-num num-pf" id="txt-pf-r">1.000</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-parameter border-s">
+            <div class="text-start mb-2"><span class="badge bg-warning text-dark">PHASE S</span></div>
+            <div class="row g-2">
+                <div class="col-4">
+                    <div class="param-title">TEGANGAN (V)</div>
+                    <div class="digital-num num-v" id="txt-v-s">0.0</div>
+                </div>
+                <div class="col-4">
+                    <div class="param-title">ARUS (A)</div>
+                    <div class="digital-num num-i" id="txt-i-s">0.00</div>
+                </div>
+                <div class="col-4">
+                    <div class="param-title">COS &phi;</div>
+                    <div class="digital-num num-pf" id="txt-pf-s">1.000</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-parameter border-t">
+            <div class="text-start mb-2"><span class="badge bg-primary">PHASE T</span></div>
+            <div class="row g-2">
+                <div class="col-4">
+                    <div class="param-title">TEGANGAN (V)</div>
+                    <div class="digital-num num-v" id="txt-v-t">0.0</div>
+                </div>
+                <div class="col-4">
+                    <div class="param-title">ARUS (A)</div>
+                    <div class="digital-num num-i" id="txt-i-t">0.00</div>
+                </div>
+                <div class="col-4">
+                    <div class="param-title">COS &phi;</div>
+                    <div class="digital-num num-pf" id="txt-pf-t">1.000</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-label">Ekuivalen & Rata-Rata 3-Phase</div>
+    <div class="card-average">
+        <div class="row g-2">
+            <div class="col-4">
+                <div class="param-title">TEGANGAN L-L (380V)</div>
+                <div class="digital-num digital-num-avg num-v" id="txt-v-avg">0.0</div>
+            </div>
+            <div class="col-4">
+                <div class="param-title">ARUS RATA-RATA (A)</div>
+                <div class="digital-num digital-num-avg num-i" id="txt-i-avg">0.00</div>
+            </div>
+            <div class="col-4">
+                <div class="param-title">COS &phi; SISTEM</div>
+                <div class="digital-num digital-num-avg num-pf" id="txt-pf-avg">1.000</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="section-label mt-0">Status Step Relay</div>
+        <span class="fs-4 text-white fw-bold" id="txt-step-aktif" style="font-family: 'Orbitron', sans-serif; color: var(--hima-yellow) !important;">STEP: 0 / 8</span>
+    </div>
+    
+    <div class="relay-grid mt-2">
+        <div class="relay-card" id="card-r1">
+            <span class="relay-num">1</span>
+            <span class="status-text" id="state-r1">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r2">
+            <span class="relay-num">2</span>
+            <span class="status-text" id="state-r2">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r3">
+            <span class="relay-num">3</span>
+            <span class="status-text" id="state-r3">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r4">
+            <span class="relay-num">4</span>
+            <span class="status-text" id="state-r4">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r5">
+            <span class="relay-num">5</span>
+            <span class="status-text" id="state-r5">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r6">
+            <span class="relay-num">6</span>
+            <span class="status-text" id="state-r6">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r7">
+            <span class="relay-num">7</span>
+            <span class="status-text" id="state-r7">OFF</span>
+        </div>
+        <div class="relay-card" id="card-r8">
+            <span class="relay-num">8</span>
+            <span class="status-text" id="state-r8">OFF</span>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <div class="log-panel d-flex justify-content-between">
+            <span>STATUS LOG: <span class="text-white" id="txt-log">Menghubungkan ke Firebase Realtime Database...</span></span>
+            <span style="color: var(--hima-red);">E.I - PENS</span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Konfigurasi Database Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyD1QISBl_kTPkO9DWPHJ5hGSqyT_2cP-8w",
+        databaseURL: "https://smartcappacitor-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Listener Real-time Data Sensor 3-Phase
+    database.ref('Sensor').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if(data) {
+            let vR = data.Tegangan_R || 0;
+            let iR = data.Arus_R || 0;
+            let pfR = data.CosPhi_R || 1;
+
+            let vS = data.Tegangan_S || 0;
+            let iS = data.Arus_S || 0;
+            let pfS = data.CosPhi_S || 1;
+
+            let vT = data.Tegangan_T || 0;
+            let iT = data.Arus_T || 0;
+            let pfT = data.CosPhi_T || 1;
+
+            document.getElementById('txt-v-r').innerText  = vR.toFixed(1);
+            document.getElementById('txt-i-r').innerText  = iR.toFixed(2);
+            document.getElementById('txt-pf-r').innerText = pfR.toFixed(3);
+            
+            document.getElementById('txt-v-s').innerText  = vS.toFixed(1);
+            document.getElementById('txt-i-s').innerText  = iS.toFixed(2);
+            document.getElementById('txt-pf-s').innerText = pfS.toFixed(3);
+            
+            document.getElementById('txt-v-t').innerText  = vT.toFixed(1);
+            document.getElementById('txt-i-t').innerText  = iT.toFixed(2);
+            document.getElementById('txt-pf-t').innerText = pfT.toFixed(3);
+            
+            let vAvgPhase = (vR + vS + vT) / 3;
+            let vLineToLine = vAvgPhase * Math.sqrt(3);
+            let iAvg = (iR + iS + iT) / 3;
+            let pfAvg = (pfR + pfS + pfT) / 3;
+
+            document.getElementById('txt-v-avg').innerText = vLineToLine.toFixed(1);
+            document.getElementById('txt-i-avg').innerText = iAvg.toFixed(2);
+            document.getElementById('txt-pf-avg').innerText = pfAvg.toFixed(3);
+
+            if(pfAvg < 0.90) {
+                document.getElementById('txt-log').innerText = "Sistem Mendeteksi Lagging Beban Induktif. Menyeimbangkan Cap-Bank...";
+            } else {
+                document.getElementById('txt-log').innerText = "Faktor Daya Jaringan 3-Phase Stabil & Aman.";
+            }
+        }
+    });
+
+    database.ref('Relay/Step_Aktif').on('value', (snapshot) => {
+        const stepAktif = snapshot.val() || 0;
+        document.getElementById('txt-step-aktif').innerText = "STEP: " + stepAktif + " / 8";
+
+        for (let i = 1; i <= 8; i++) {
+            const cardElement = document.getElementById('card-r' + i);
+            const stateText = document.getElementById('state-r' + i);
+            
+            if (i <= stepAktif) {
+                cardElement.classList.add('active-on');
+                stateText.innerText = "ON";
+            } else {
+                cardElement.classList.remove('active-on');
+                stateText.innerText = "OFF";
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
