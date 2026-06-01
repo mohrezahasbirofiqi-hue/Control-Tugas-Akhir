@@ -207,7 +207,7 @@
                 <p class="sub-title m-0 mt-1">SISTEM KENDALI UTAMA POWER FACTOR CONTROLLER 3-PHASE</p>
             </div>
             <div class="col-lg-3 text-lg-end text-center mt-3 mt-lg-0">
-                <span class="badge bg-dark text-success border border-success p-2 fs-6">● SYSTEM ONLINE</span>
+                <span class="badge bg-dark border p-2 fs-6" id="system-status" style="color: var(--hima-red); border-color: var(--hima-red);">● SYSTEM OFFLINE</span>
             </div>
         </div>
     </div>
@@ -383,10 +383,14 @@
             document.getElementById('txt-i-avg').innerText = iAvg.toFixed(2);
             document.getElementById('txt-pf-avg').innerText = pfAvg.toFixed(3);
 
-            if(pfAvg < 0.90) {
-                document.getElementById('txt-log').innerText = "Sistem Mendeteksi Lagging Beban Induktif. Menyeimbangkan Cap-Bank...";
-            } else {
-                document.getElementById('txt-log').innerText = "Faktor Daya Jaringan 3-Phase Stabil & Aman.";
+            // Cek status log pesan (Hanya merubah jika sistem dalam keadaan ONLINE)
+            const statusBadge = document.getElementById('system-status');
+            if (statusBadge.innerText.includes("ONLINE")) {
+                if(pfAvg < 0.90) {
+                    document.getElementById('txt-log').innerText = "Sistem Mendeteksi Lagging Beban Induktif. Menyeimbangkan Cap-Bank...";
+                } else {
+                    document.getElementById('txt-log').innerText = "Faktor Daya Jaringan 3-Phase Stabil & Aman.";
+                }
             }
         }
     });
@@ -406,6 +410,32 @@
                 cardElement.classList.remove('active-on');
                 stateText.innerText = "OFF";
             }
+        }
+    });
+
+    // ==========================================
+    // LOGIKA DETEKSI ONLINE / OFFLINE SISTEM ALAT
+    // ==========================================
+    database.ref('Relay/Status_Alat').on('value', (snapshot) => {
+        const status = snapshot.val();
+        const statusBadge = document.getElementById('system-status');
+        
+        if (status === "ONLINE") {
+            // Ubah tampilan menjadi Online (Hijau Neon)
+            statusBadge.style.color = "var(--neon-green)";
+            statusBadge.style.borderColor = "var(--neon-green)";
+            statusBadge.innerText = "● SYSTEM ONLINE";
+            
+            // Perbarui log teks awal kembali normal
+            if (document.getElementById('txt-log').innerText === "Koneksi ke alat terputus! Memeriksa perangkat...") {
+                document.getElementById('txt-log').innerText = "Faktor Daya Jaringan 3-Phase Berhasil Sinkron.";
+            }
+        } else {
+            // Ubah tampilan menjadi Offline (Merah Hima)
+            statusBadge.style.color = "var(--hima-red)";
+            statusBadge.style.borderColor = "var(--hima-red)";
+            statusBadge.innerText = "● SYSTEM OFFLINE";
+            document.getElementById('txt-log').innerText = "Koneksi ke alat terputus! Memeriksa perangkat...";
         }
     });
 </script>
